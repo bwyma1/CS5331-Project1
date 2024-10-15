@@ -98,4 +98,5 @@ ggplot(mobility) +
   labs(title = "Percent Change From Baseline", x = "Date", y = "% Change", color = "Legend") +
   theme_minimal()
   
+=======
 
