@@ -22,3 +22,6 @@ mobility <- mobility %>% drop_na(country_region_code) #Subset mobility report to
 cases_TX <- read_csv("COVID-19/COVID-19_cases_TX.csv")
 cases_TX <- cases_TX[cases_TX$date >= "2020-03-05",] #March 5th 2020 is the First Case 
 str(cases_TX)
+
+counties <- read_csv("COVID-19/TX_Counties.csv")
+
