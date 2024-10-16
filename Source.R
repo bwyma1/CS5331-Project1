@@ -90,9 +90,12 @@ ggplot(data_long, aes(x = Column, y = Value)) +
         axis.title.y = element_text(size = 10),
         strip.text = element_blank())
 
-# 'Taking a look into age
-
-
+ggplot(census_cleaned) +
+  geom_histogram(aes(cases_per_1000)) +
+  labs(title = '',x = "Cases per 1000", y = "# of Counties") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10))
 
 # 'Cleaning Texas cases data
 cases_TX <- as_tibble(cases_TX)
@@ -105,6 +108,9 @@ cases_TX_cleaned <- cases_TX_cleaned %>%
   filter(county != 'Statewide Unallocated') %>%
   mutate(county = as.factor(county)) 
 
+# Check for duplicates or missing values
+colSums(is.na(cases_TX_cleaned))
+sum(duplicated(cases_TX_cleaned))
 
 # 'Cleaning mobility report
 mobility <- as_tibble(mobility)
@@ -121,7 +127,6 @@ mobility_cleaned <- mobility %>%
   mutate(county = as.factor(county))
 mobility_cleaned <- mobility_cleaned %>% drop_na(county)
 
-
 # 'Cleaning acute_facility data
 acute_facility <- as_tibble(acute_facility)
 selected_columns <- c('County', 'Facility', 'Ownership', 'Acute')
@@ -137,6 +142,51 @@ acute_facility_cleaned <- acute_facility %>%
          facility = as.factor(facility),
          ownership = as.factor(ownership))
 
+# 'Statistics for data.
+
+# Statistics for census
+stats <- census_cleaned %>%
+  select(where(is.numeric)) %>%  # Select only numeric columns
+  summarise(across(everything(), list(
+    Mean = ~ mean(.x, na.rm = TRUE),
+    Median = ~ median(.x, na.rm = TRUE),
+    SD = ~ sd(.x, na.rm = TRUE),
+    IQR = ~ IQR(.x, na.rm = TRUE)
+  )))
+print(stats, n = Inf, width = Inf)
+
+# Statistics for Texas cases
+stats <- cases_TX_cleaned %>%
+  select(where(is.numeric)) %>%  # Select only numeric columns
+  summarise(across(everything(), list(
+    Mean = ~ mean(.x, na.rm = TRUE),
+    Median = ~ median(.x, na.rm = TRUE),
+    SD = ~ sd(.x, na.rm = TRUE),
+    IQR = ~ IQR(.x, na.rm = TRUE)
+  )))
+print(stats, n = Inf, width = Inf)
+
+# Statistics for Mobility Report
+stats <- mobility_cleaned %>%
+  select(where(is.numeric)) %>%  # Select only numeric columns
+  summarise(across(everything(), list(
+    Mean = ~ mean(.x, na.rm = TRUE),
+    Median = ~ median(.x, na.rm = TRUE),
+    SD = ~ sd(.x, na.rm = TRUE),
+    IQR = ~ IQR(.x, na.rm = TRUE)
+  )))
+print(stats, n = Inf, width = Inf)
+
+# Statistics for Health Facilities
+stats <- acute_facility_cleaned %>%
+  select(where(is.numeric)) %>%  # Select only numeric columns
+  summarise(across(everything(), list(
+    Mean = ~ mean(.x, na.rm = TRUE),
+    Median = ~ median(.x, na.rm = TRUE),
+    SD = ~ sd(.x, na.rm = TRUE),
+    IQR = ~ IQR(.x, na.rm = TRUE)
+  )))
+print(stats, n = Inf, width = Inf)
 
 # 'Removing unwanted environment variables
 rm(age_22_to_64, age_65_and_over, age_under_21, data_long, facility, commute_public_transportation)
@@ -145,17 +195,3 @@ rm(age_22_to_64, age_65_and_over, age_under_21, data_long, facility, commute_pub
 # '
 # 'Data Exploration
 
-# Removing Weekends since people don't normally work on weekends 
-mobility <-  mobility %>%
-  filter(!(weekdays(date) %in% c("Saturday", "Sunday")))
-
-# Plotting line chart for entire US with date and 
-ggplot(mobility) +
-  geom_line(aes(x = date, y = workplaces_percent_change_from_baseline, color = "Workplace")) +
-  geom_smooth(aes(x = date, y = workplaces_percent_change_from_baseline, color = "Workplace"), se = FALSE) +
-  geom_line(aes(x = date, y = parks_percent_change_from_baseline, color = "Parks")) +
-  geom_smooth(aes(x = date, y = parks_percent_change_from_baseline, color = "Parks"), se = FALSE) +
-  geom_line(aes(x = date, y = grocery_and_pharmacy_percent_change_from_baseline, color = "Grocery/Pharmacy")) +
-  geom_smooth(aes(x = date, y = grocery_and_pharmacy_percent_change_from_baseline, color = "Grocery/Pharmacy"), se = FALSE) +
-  labs(title = "Percent Change From Baseline", x = "Date", y = "% Change", color = "Legend") +
-  theme_minimal()
