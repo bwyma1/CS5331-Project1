@@ -159,3 +159,25 @@ ggplot(mobility) +
   geom_smooth(aes(x = date, y = grocery_and_pharmacy_percent_change_from_baseline, color = "Grocery/Pharmacy"), se = FALSE) +
   labs(title = "Percent Change From Baseline", x = "Date", y = "% Change", color = "Legend") +
   theme_minimal()
+
+census_select <- census_cleaned %>% select(county, cases_per_1000, deaths_per_1000, commute_public_transportation, cases, deaths, population)
+cor_TX <- cor(census_select[,-1])
+ggcorrplot(cor_TX, p.mat = cor_pmat(census_select[,-1]), insig = "blank", hc.order = TRUE)
+
+ggplot(census_cleaned, mapping = aes(x = age_65_and_over / population, y = deaths_per_1000, size = population)) + 
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme(legend.position="none") +
+  labs(x = "Percentage of People 65 and Over", y = "Deaths per 1000", size = "total population")
+
+ggplot(census_cleaned, mapping = aes(x = age_22_to_64 / population, y = deaths_per_1000, size = population)) + 
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme(legend.position="none") +
+  labs(x = "Percentage of People Between 22 and 64", y = "Deaths per 1000", size = "total population")
+
+ggplot(census_cleaned, mapping = aes(x = age_under_21 / population, y = deaths_per_1000, size = population)) + 
+  geom_point() +
+  geom_smooth(method = lm) +
+  theme(legend.position="none") +
+  labs(x = "Percentage of People Under 21", y = "Deaths per 1000", size = "total population")
