@@ -396,12 +396,6 @@ ggplot(cases_time, aes(x = date, y = total_death)) +
   ) +
   theme_minimal()
 
-library(ggplot2)
-library(viridis)
-
-# Example data frame
-# population_density_map should already be defined
-# For demonstration purposes, we'll assume 'population_density_map' has relevant data
 
 
 
