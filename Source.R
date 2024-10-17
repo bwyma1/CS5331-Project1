@@ -191,6 +191,8 @@ ggplot(census_cleaned, mapping = aes(x = age_under_21 / population, y = deaths_p
 library(ggplot2)
 library(dplyr)
 library(maps)
+install.packages("viridis")
+library(viridis)
 
 # Get Texas state and county map data
 states <- map_data("state")
@@ -230,22 +232,34 @@ tx_bed_map <- tx_county_df %>%
 
 # 4. Plot Heatmap for Facility Count
 ggplot(tx_facility_map, aes(x = long, y = lat, group = group, fill = Facility_Count)) +
-  geom_polygon(color = "grey", size = 0.2) +  # Lighter color and thinner border
-  theme_void() +  # Minimal theme
-  scale_fill_gradientn(colors = c("yellow", "blue"), na.value = "lightgrey", name = "Acute Facility Count") +  # Smooth color transition
-  labs(title = "Texas: Acute Facility per County",
-       subtitle = "Year: 2020", 
-       caption = "Source: Texas Health Data:healthdata.dshs.texas.gov"
-       )
+  geom_polygon(color = "white", size = 0.2) +  # Changed border color to white
+  theme_light() +  # Minimal theme
+  scale_fill_viridis_c(option = "C", na.value = "lightgrey", name = "Acute Facility Count") +  # Changed option to "C"
+  labs(
+    title = "Texas: Acute Facilities by County",  # Updated title for clarity
+    subtitle = "Census Year: 2020",  # Updated subtitle for consistency
+    caption = "Source: Texas Health Data"  # Updated caption for brevity
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 14)
+  )
+
 
 # 5. Plot Heatmap for Average Beds per Facility per county
 ggplot(tx_bed_map, aes(x = long, y = lat, group = group, fill = Avg_Beds_Per_Facility)) +
-  geom_polygon(color = "grey", size = 0.2) +  # Lighter color and thinner border
-  theme_void() +  # Minimal theme
-  scale_fill_gradientn(colors = c("blue", "yellow"), na.value = "lightgrey", name = "Available Bed Space") +  # Smooth color transition
-  labs(title = "Texas: Average Bedspace per Facility per County",
-       subtitle = "Year: 2020", 
-       caption = "Source: Texas Health Data:healthdata.dshs.texas.gov")
+  geom_polygon(color = "white", size = 0.2) +  # Changed border color to white
+  theme_light() +  # Minimal theme
+  scale_fill_viridis_c(option = "C", na.value = "lightgrey", name = "Available Bed Space") +  # Changed option to "C"
+  labs(
+    title = "Texas: Average Bedspace per Facility by County",  # Updated title
+    subtitle = "Census Year: 2020",  # Updated subtitle for consistency
+    caption = "Source: Texas Health Data"  # Updated caption for brevity
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 14)
+  )
 
 
 # standardized for county map
@@ -257,36 +271,58 @@ death_map <- tx_county_df %>% left_join(death_per_county, by = "county")
 
 ggplot(death_map, aes(x = long, y = lat, group = group, fill = deaths_per_1000)) +
   geom_polygon(color = "white", size = 0.2) +  # Lighter color and thinner border
-  theme_void() +  # Minimal theme
-  scale_fill_gradientn(
-    colors = c("blue","yellow"), 
-    na.value = "lightgrey", 
-    name = "Death per 1,000"
+  theme_light() +  # Minimal theme
+  scale_fill_viridis_c(
+    option = "C",  # Changed to "C" for consistency with the previous map
+    na.value = "lightgrey",  # Set color for NA values
+    name = "Deaths per 1,000"
   ) + 
   labs(
-    title = "Texas: Deaths per 1,000 by County", 
-    subtitle = "Year: 2020", 
-    caption = "Source: Census Data"
+    title = "Texas: Deaths per 1,000 by County",  # Updated title
+    subtitle = "Census Year: 2020",  # Updated subtitle to match the population density format
+    caption = "Source: U.S. Census Bureau"  # Updated caption for consistency
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 14)
   )
 
 population_density <- census_cleaned %>%
   group_by(county) %>%select(population)
 
 population_density_map <- tx_county_df %>%
-  left_join(population_density, by = "county")
+  left_join(population_density, by = "county") 
 
-ggplot(population_density_map, aes(x = long, y = lat, group = group, fill = population)) +
-  geom_polygon(color = "grey", size = 0.2) +  # Lighter color and thinner border
-  theme_void() +  # Minimal theme
-  scale_fill_gradientn(colours = rev(rainbow(7)),
-                       breaks = c(100, 1,000, 10,000,100,000, 1,000,000, 10,000,000),
-                       trans = "log10",
-                       name = "Population",
-                       labels = function(x) format(x, big.mark = ",", scientific = FALSE))+ 
-  labs(title = "Texas: Population by County",
-       subtitle = "Year: 2020",
-       caption = "Source: Census"
-       )
+county_area <- read_csv("COVID-19/TX_Counties.csv")
+county_area$NAME <- tolower(county_area$NAME) # Convert to lowercase
+county_area$NAME <- gsub(" county$", "", county_area$NAME)
+# Rename the "NAME" column to "county"
+county_area <- county_area %>%
+  rename(county = NAME) %>%
+  rename(area = ALAND_SQMI) %>%
+  select(county, area)  
+
+population_density_map <- population_density_map %>%
+  left_join(county_area, by = "county")
+
+population_density_map <- population_density_map %>%
+  mutate(population_density = population / area)
+
+ggplot(population_density_map, aes(x = long, y = lat, group = group, fill = population_density)) +
+  geom_polygon(color = "lightgrey", size = 0.2) +  # Lighter color and thinner border
+  theme_light() +  # Minimal theme
+  scale_fill_viridis_c(
+    option = "C",  # Choose a color option, you can also try "A", "B", "D", etc.
+    trans = "log10",  # Logarithmic scale for better representation
+    name = "Population Density",
+    labels = function(x) format(x, big.mark = ",", scientific = FALSE)  # Format labels
+  ) +
+  labs(title = "Texas Population Density by County",
+       subtitle = "Census Year: 2020",
+       caption = "Source: U.S. Census Bureau"
+  ) +
+  theme(plot.title = element_text(size = 16, face = "bold"),
+        plot.subtitle = element_text(size = 14))
 
 # time series graph____
 
@@ -342,16 +378,6 @@ cases_time <- cases_TX_cleaned %>%
     total_death = sum(deaths, na.rm = TRUE)
   )
 
-ggplot(cases_time, aes(x = date)) +
-  geom_line(aes(y = total_case, color = "Total Cases"), size = 1) +
-  labs(
-    title = "Daily Cases and Deaths in Texas",
-    x = "Date", y = "Count",
-    color = "Metric"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "top")
-
 ggplot(cases_time, aes(x = date, y = total_case)) +
   geom_line(color = "red", size = 1) +
   geom_smooth(color = "blue", size = 0.75, alpha = 0.5) +
@@ -369,6 +395,8 @@ ggplot(cases_time, aes(x = date, y = total_death)) +
     x = "Date", y = "Total Deaths"
   ) +
   theme_minimal()
+
+
 
 
 
