@@ -255,10 +255,84 @@ cluster_group_4 <- census_cleaned %>%
 
 pkgs <- c("cluster", "dbscan", "e1071", "factoextra", "fpc", 
           "GGally", "kernlab", "mclust", "mlbench", "scatterpie", 
-          "seriation", "tidyverse")
+          "seriation", "tidyverse", "plotly")
 
 pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
 if(length(pkgs_install)) install.packages(pkgs_install)
+
+# Pre Cluster Visualization 
+
+library(plotly)
+
+## Cluster 1
+# Create 3D scatter plot with updated axes
+fig1 <- plot_ly(cluster_group_1, 
+               x = ~age_under_21, 
+               y = ~age_65_and_over,  # Switch population_density with age_65_and_over
+               z = ~age_22_to_64, 
+               color = ~population_density,  # Color points based on population_density
+               size = ~population_density,  # Size points based on population_density
+               sizes = c(10, 50))  # Adjust the size range of points
+
+# Customize axes labels
+fig1 <- fig1 %>% layout(scene = list(
+  xaxis = list(title = 'Age Under 21'),
+  yaxis = list(title = 'Age 65 and Over'),
+  zaxis = list(title = 'Age 22-64')
+))
+
+fig1 # Display the plot
+
+## Cluster 2
+fig2 <- plot_ly(cluster_group_2,
+                x = ~commute_public_transportation,
+                y = ~commute_alone, 
+                z = ~population_density,
+                color = ~population_density,  # Color points based on population_density
+                size = ~population_density,   # Size points based on population_density
+                sizes = c(10, 50))             # Adjust the size range of points
+
+# Customize axes labels and set the range between -1 and 1
+fig2 <- fig2 %>% layout(scene = list(
+  xaxis = list(title = 'Commute Public Transportation'),  # Set x-axis range
+  yaxis = list(title = 'Commute Alone'),  # Set y-axis range
+  zaxis = list(title = 'Population Density')  # Set z-axis range
+))
+
+fig2
+
+## Cluster 3
+# Since ownership is categorical 
+unique_ownership <- unique(cluster_group_3$ownership)# Grab unique values from the 'ownership' column
+print(unique_ownership)
+
+ggplot(cluster_group_3, aes(x = beds, y = population_density, color = ownership)) +
+  geom_point() +  # Add points to the plot
+  labs(title = "Beds vs Population Density by Ownership",
+       x = "Beds",
+       y = "Population Density") +
+  theme_minimal()  # Optional: a clean theme for the plot
+
+
+## Cluster 4
+fig4 <- plot_ly(cluster_group_4, 
+                x = ~age_65_and_over, 
+                y = ~Avg_Beds_Per_Facility, 
+                z = ~Facility_Count,
+                color = ~Facility_Count,  # Color points based on Facility_Count
+                size = ~Facility_Count,   # Size points based on Facility_Count
+                sizes = c(10, 50))        # Adjust the size range of points
+
+# Customize axes labels and set the range between -1 and 1
+fig4 <- fig4 %>% layout(scene = list(
+  xaxis = list(title = 'Age 65 and Over' ),  # Set x-axis range
+  yaxis = list(title = 'Avg Beds Per Facility'),  # Set y-axis range
+  zaxis = list(title = 'Facility Count')  # Set z-axis range
+))
+
+# Display the plot
+fig4
+
 
 #'
 #'
@@ -268,32 +342,64 @@ if(length(pkgs_install)) install.packages(pkgs_install)
 #'
 
 # Perform K-means cluster 1
-cluster_1 <- do.call(rbind, cluster_group_1)
-sum(is.na(cluster_1))
-sum(is.nan(cluster_1))
-sum(is.infinite(cluster_1))
-which(is.na(cluster_1))
+#_____
+# Initialize lists to store averaged clustering models and statistics
+avg_wss_values <- numeric(9)  # To store average WSS for each k from 2 to 10
+avg_silhouette_values <- numeric(9)  # To store average silhouette width for each k from 2 to 10
 
-km_cluster_1 <- kmeans(cluster_1, centers = 3, nstart = 10)
+# Loop through cluster counts from 2 to 10
+for (k in 2:10) {
+  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+  wss_runs <- numeric(10)
+  silhouette_runs <- numeric(10)
+  
+  for (i in 1:10) {
+    # Run k-means clustering with k clusters
+    km_model <- kmeans(cluster_group_1, centers = k, nstart = 10)
+    
+    # Calculate the distance matrix
+    d <- dist(cluster_group_1)
+    
+    # Calculate clustering statistics using the fpc package without loading it
+    stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
+    
+    # Store the WSS and silhouette width for this run
+    wss_runs[i] <- km_model$tot.withinss
+    silhouette_runs[i] <- stats$avg.silwidth
+  }
+  
+  # Calculate and store the average WSS and silhouette width for this k
+  avg_wss_values[k - 1] <- mean(wss_runs)
+  avg_silhouette_values[k - 1] <- mean(silhouette_runs)
+}
+
+# Plot the average WSS to find the elbow point
+plot(2:10, avg_wss_values, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k)", ylab = "Average Total WSS",
+     main = "Elbow Method for Optimal k (Averaged over 10 runs)")
+
+# Plot the average silhouette width to find the optimal k
+plot(2:10, avg_silhouette_values, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k)", ylab = "Average Silhouette Width",
+     main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
+#____
+
+
+
+
+
+
+
+
+km_cluster_1 <- kmeans(cluster_group_1, centers = 3, nstart = 10)
 km_cluster_1
 
-# Add cluster assignments to the data
-cluster_1_df <- as.data.frame(cluster_1)  # Convert to data frame for easy plotting
-cluster_1_df$Cluster <- factor(km_cluster_1$cluster)  # Add cluster assignments as a factor
-
-
 # Perform K-means cluster 2
-cluster_2 <- do.call(rbind, cluster_group_2)
-sum(is.na(cluster_2))
-sum(is.nan(cluster_2))
-sum(is.infinite(cluster_2))
-which(is.na(cluster_2))
 
-km_cluster_2 <- kmeans(cluster_2, centers = 2, nstart = 10)
+km_cluster_2 <- kmeans(cluster_group_2, centers = 2, nstart = 10)
 km_cluster_2
 
-# Add cluster assignments to the data
-cluster_2_df <- as.data.frame(cluster_2)  # Convert to data frame for easy plotting
+cluster_2_df <- as.data.frame(cluster_group_2)  # Convert to data frame for easy plotting
 cluster_2_df$Cluster <- factor(km_cluster_2$cluster)  # Add cluster assignments as a factor
 
 # Perform K-means cluster 3
@@ -307,22 +413,16 @@ summary(cluster_group_3)
 km_cluster_3 <- kmeans(cluster_3, centers = 2, nstart = 10)
 km_cluster_3
 
-# Add cluster assignments to the data
 cluster_3_df <- as.data.frame(cluster_3)  # Convert to data frame for easy plotting
 cluster_3_df$Cluster <- factor(km_cluster_3$cluster)  # Add cluster assignments as a factor
 
-# Perform K-means cluster 4
-cluster_4 <- do.call(rbind, cluster_group_4)
-sum(is.na(cluster_4))
-sum(is.nan(cluster_4))
-sum(is.infinite(cluster_4))
-which(is.na(cluster_4))
 
-km_cluster_4 <- kmeans(cluster_4, centers = 2, nstart = 10)
+# Perform K-means cluster 4
+
+km_cluster_4 <- kmeans(cluster_group_4, centers = 2, nstart = 10)
 km_cluster_4
 
-# Add cluster assignments to the data
-cluster_4_df <- as.data.frame(cluster_4)  # Convert to data frame for easy plotting
+cluster_4_df <- as.data.frame(cluster_group_4)  # Convert to data frame for easy plotting
 cluster_4_df$Cluster <- factor(km_cluster_4$cluster)  # Add cluster assignments as a factor
 
 #'
