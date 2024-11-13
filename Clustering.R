@@ -342,10 +342,9 @@ fig4
 #'
 
 # Perform K-means cluster 1
-#_____
 # Initialize lists to store averaged clustering models and statistics
-avg_wss_values <- numeric(9)  # To store average WSS for each k from 2 to 10
-avg_silhouette_values <- numeric(9)  # To store average silhouette width for each k from 2 to 10
+avg_wss_values_1 <- numeric(9)  # To store average WSS for each k from 2 to 10
+avg_silhouette_values_1 <- numeric(9)  # To store average silhouette width for each k from 2 to 10
 
 # Loop through cluster counts from 2 to 10
 for (k in 2:10) {
@@ -360,7 +359,7 @@ for (k in 2:10) {
     # Calculate the distance matrix
     d <- dist(cluster_group_1)
     
-    # Calculate clustering statistics using the fpc package without loading it
+    # Calculate clustering statistics using fpc package without loading it
     stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
     
     # Store the WSS and silhouette width for this run
@@ -369,61 +368,117 @@ for (k in 2:10) {
   }
   
   # Calculate and store the average WSS and silhouette width for this k
-  avg_wss_values[k - 1] <- mean(wss_runs)
-  avg_silhouette_values[k - 1] <- mean(silhouette_runs)
+  avg_wss_values_1[k - 1] <- mean(wss_runs)
+  avg_silhouette_values_1[k - 1] <- mean(silhouette_runs)
 }
 
 # Plot the average WSS to find the elbow point
-plot(2:10, avg_wss_values, type = "b", pch = 19, frame = FALSE,
-     xlab = "Number of Clusters (k)", ylab = "Average Total WSS",
-     main = "Elbow Method for Optimal k (Averaged over 10 runs)")
+plot(2:10, avg_wss_values_1, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 1", ylab = "Average Total WSS",
+     main = "WSS for Optimal k (Averaged over 10 runs)")
 
 # Plot the average silhouette width to find the optimal k
-plot(2:10, avg_silhouette_values, type = "b", pch = 19, frame = FALSE,
-     xlab = "Number of Clusters (k)", ylab = "Average Silhouette Width",
+plot(2:10, avg_silhouette_values_1, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 1", ylab = "Average Silhouette Width",
      main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
-#____
 
-
-
-
-
-
-
-
-km_cluster_1 <- kmeans(cluster_group_1, centers = 3, nstart = 10)
-km_cluster_1
-
+#
 # Perform K-means cluster 2
+#
+# Initialize lists to store averaged clustering models and statistics for cluster group 2
+avg_wss_values_2 <- numeric(9)  # To store average WSS for each k from 2 to 10
+avg_silhouette_values_2 <- numeric(9)  # To store average silhouette width for each k from 2 to 10
 
-km_cluster_2 <- kmeans(cluster_group_2, centers = 2, nstart = 10)
-km_cluster_2
+# Loop through cluster counts from 2 to 10 for cluster group 2
+for (k in 2:10) {
+  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+  wss_runs <- numeric(10)
+  silhouette_runs <- numeric(10)
+  
+  for (i in 1:10) {
+    # Run k-means clustering with k clusters for cluster group 2
+    km_model <- kmeans(cluster_group_2, centers = k, nstart = 10)
+    
+    # Calculate the distance matrix
+    d <- dist(cluster_group_2)
+    
+    # Calculate clustering statistics using fpc package without loading it
+    stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
+    
+    # Store the WSS and silhouette width for this run
+    wss_runs[i] <- km_model$tot.withinss
+    silhouette_runs[i] <- stats$avg.silwidth
+  }
+  
+  # Calculate and store the average WSS and silhouette width for this k
+  avg_wss_values_2[k - 1] <- mean(wss_runs)
+  avg_silhouette_values_2[k - 1] <- mean(silhouette_runs)
+}
 
-cluster_2_df <- as.data.frame(cluster_group_2)  # Convert to data frame for easy plotting
-cluster_2_df$Cluster <- factor(km_cluster_2$cluster)  # Add cluster assignments as a factor
+# Plot the average WSS to find the elbow point for cluster group 2
+plot(2:10, avg_wss_values_2, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 2", ylab = "Average Total WSS",
+     main = "WSS for Optimal k (Averaged over 10 runs)")
+
+# Plot the average silhouette width to find the optimal k for cluster group 2
+plot(2:10, avg_silhouette_values_2, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 2", ylab = "Average Silhouette Width",
+     main = "Silhouette Method for Optimal k ( Averaged over 10 runs)")
+
 
 # Perform K-means cluster 3
-cluster_3 <- do.call(rbind, cluster_group_3)
-sum(is.na(cluster_3))
-sum(is.nan(cluster_3))
-sum(is.infinite(cluster_3))
-which(is.na(cluster_3))
-summary(cluster_group_3)
+# Oh, it's Nothing !!!!!
+# Because there is categorical data
 
-km_cluster_3 <- kmeans(cluster_3, centers = 2, nstart = 10)
-km_cluster_3
-
-cluster_3_df <- as.data.frame(cluster_3)  # Convert to data frame for easy plotting
-cluster_3_df$Cluster <- factor(km_cluster_3$cluster)  # Add cluster assignments as a factor
-
-
+#
 # Perform K-means cluster 4
+#
+#
+# Perform K-means cluster 4
+#
+#
+# Perform K-means cluster 4
+#
+# Initialize lists to store averaged clustering models and statistics for cluster group 4
+avg_wss_values_4 <- numeric(14)  # To store average WSS for each k from 2 to 15
+avg_silhouette_values_4 <- numeric(14)  # To store average silhouette width for each k from 2 to 15
 
-km_cluster_4 <- kmeans(cluster_group_4, centers = 2, nstart = 10)
-km_cluster_4
+# Loop through cluster counts from 2 to 15 for cluster group 4
+for (k in 2:15) {
+  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+  wss_runs <- numeric(10)
+  silhouette_runs <- numeric(10)
+  
+  for (i in 1:10) {
+    # Run k-means clustering with k clusters for cluster group 4
+    km_model <- kmeans(cluster_group_4, centers = k, nstart = 10)
+    
+    # Calculate the distance matrix
+    d <- dist(cluster_group_4)
+    
+    # Calculate clustering statistics using fpc package without loading it
+    stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
+    
+    # Store the WSS and silhouette width for this run
+    wss_runs[i] <- km_model$tot.withinss
+    silhouette_runs[i] <- stats$avg.silwidth
+  }
+  
+  # Calculate and store the average WSS and silhouette width for this k
+  avg_wss_values_4[k - 1] <- mean(wss_runs)
+  avg_silhouette_values_4[k - 1] <- mean(silhouette_runs)
+}
 
-cluster_4_df <- as.data.frame(cluster_group_4)  # Convert to data frame for easy plotting
-cluster_4_df$Cluster <- factor(km_cluster_4$cluster)  # Add cluster assignments as a factor
+# Plot the average WSS to find the elbow point for cluster group 4
+plot(2:15, avg_wss_values_4, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 4", ylab = "Average Total WSS",
+     main = "WSS for Optimal k (Averaged over 10 runs)")
+
+# Plot the average silhouette width to find the optimal k for cluster group 4
+plot(2:15, avg_silhouette_values_4, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 4", ylab = "Average Silhouette Width",
+     main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
+
 
 #'
 #'
