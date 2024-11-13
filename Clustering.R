@@ -260,21 +260,43 @@ pkgs <- c("cluster", "dbscan", "e1071", "factoextra", "fpc",
 pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
 if(length(pkgs_install)) install.packages(pkgs_install)
 
-# K-Mean
+#'
+#'
+#' k-means
+#'
+#'
+#'
+
+# Perform K-means cluster 1
 cluster_1 <- do.call(rbind, cluster_group_1)
 sum(is.na(cluster_1))
 sum(is.nan(cluster_1))
 sum(is.infinite(cluster_1))
 which(is.na(cluster_1))
 
+km_cluster_1 <- kmeans(cluster_1, centers = 3, nstart = 10)
+km_cluster_1
 
+# Add cluster assignments to the data
+cluster_1_df <- as.data.frame(cluster_1)  # Convert to data frame for easy plotting
+cluster_1_df$Cluster <- factor(km_cluster_1$cluster)  # Add cluster assignments as a factor
+
+
+# Perform K-means cluster 2
 cluster_2 <- do.call(rbind, cluster_group_2)
 sum(is.na(cluster_2))
 sum(is.nan(cluster_2))
 sum(is.infinite(cluster_2))
 which(is.na(cluster_2))
 
+km_cluster_2 <- kmeans(cluster_2, centers = 2, nstart = 10)
+km_cluster_2
 
+# Add cluster assignments to the data
+cluster_2_df <- as.data.frame(cluster_2)  # Convert to data frame for easy plotting
+cluster_2_df$Cluster <- factor(km_cluster_2$cluster)  # Add cluster assignments as a factor
+
+# Perform K-means cluster 3
 cluster_3 <- do.call(rbind, cluster_group_3)
 sum(is.na(cluster_3))
 sum(is.nan(cluster_3))
@@ -282,22 +304,160 @@ sum(is.infinite(cluster_3))
 which(is.na(cluster_3))
 summary(cluster_group_3)
 
+km_cluster_3 <- kmeans(cluster_3, centers = 2, nstart = 10)
+km_cluster_3
+
+# Add cluster assignments to the data
+cluster_3_df <- as.data.frame(cluster_3)  # Convert to data frame for easy plotting
+cluster_3_df$Cluster <- factor(km_cluster_3$cluster)  # Add cluster assignments as a factor
+
+# Perform K-means cluster 4
 cluster_4 <- do.call(rbind, cluster_group_4)
 sum(is.na(cluster_4))
 sum(is.nan(cluster_4))
 sum(is.infinite(cluster_4))
 which(is.na(cluster_4))
 
+km_cluster_4 <- kmeans(cluster_4, centers = 2, nstart = 10)
+km_cluster_4
+
+# Add cluster assignments to the data
+cluster_4_df <- as.data.frame(cluster_4)  # Convert to data frame for easy plotting
+cluster_4_df$Cluster <- factor(km_cluster_4$cluster)  # Add cluster assignments as a factor
+
+#'
+#'
+#' k-mode
+#'
+#'
+#'
+# Install and load necessary packages
+if (!require(klaR)) install.packages("klaR")
+library(klaR)
+
+# Perform K-mode clustering on cluster group 1
+# Ensure that categorical variables are factored appropriately
+cluster_1_mode <- cluster_group_1 %>%
+  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+
+# Now apply k-mode clustering (centers = number of clusters)
+km_mode_1 <- kmodes(cluster_1_mode, modes = 3)
+
+# Add cluster assignments to the data
+cluster_1_mode_df <- as.data.frame(cluster_1_mode)  # Convert to data frame for easy plotting
+cluster_1_mode_df$Cluster <- factor(km_mode_1$cluster)  # Add cluster assignments as a factor
+
+# Perform K-mode clustering on cluster group 2
+cluster_2_mode <- cluster_group_2 %>%
+  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+
+km_mode_2 <- kmodes(cluster_2_mode, modes = 2)
+
+# Add cluster assignments to the data
+cluster_2_mode_df <- as.data.frame(cluster_2_mode)
+cluster_2_mode_df$Cluster <- factor(km_mode_2$cluster)
+
+# Perform K-mode clustering on cluster group 3
+cluster_3_mode <- cluster_group_3 %>%
+  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+
+km_mode_3 <- kmodes(cluster_3_mode, modes = 2)
+
+# Add cluster assignments to the data
+cluster_3_mode_df <- as.data.frame(cluster_3_mode)
+cluster_3_mode_df$Cluster <- factor(km_mode_3$cluster)
+
+# Perform K-mode clustering on cluster group 4
+cluster_4_mode <- cluster_group_4 %>%
+  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+
+km_mode_4 <- kmodes(cluster_4_mode, modes = 2)
+
+# Add cluster assignments to the data
+cluster_4_mode_df <- as.data.frame(cluster_4_mode)
+cluster_4_mode_df$Cluster <- factor(km_mode_4$cluster)
+
+# View the k-mode clustering results
+list(
+  cluster_1_mode_df = cluster_1_mode_df,
+  cluster_2_mode_df = cluster_2_mode_df,
+  cluster_3_mode_df = cluster_3_mode_df,
+  cluster_4_mode_df = cluster_4_mode_df
+)
+
+#'
+#'
+#' hierarchical clustering
+#'
+#'
+#'
+# Load necessary library
+if (!require(dendextend)) install.packages("dendextend")
+library(dendextend)
+
+# Hierarchical Clustering on cluster group 1
+# We can use scaled data for this step (as before, scale if necessary)
+cluster_1_scaled <- scale_numeric(cluster_group_1)
+
+# Compute the distance matrix using Euclidean distance
+dist_cluster_1 <- dist(cluster_1_scaled)
+
+# Perform hierarchical clustering using complete linkage method
+hclust_cluster_1 <- hclust(dist_cluster_1, method = "complete")
+
+# Plot the dendrogram
+plot(hclust_cluster_1, main = "Hierarchical Clustering - Cluster Group 1", xlab = "", sub = "", cex = 0.8)
+
+# Cut the dendrogram to form clusters (e.g., 3 clusters)
+clusters_1 <- cutree(hclust_cluster_1, k = 3)
+
+# Add cluster assignments to the data
+cluster_1_hclust_df <- as.data.frame(cluster_1_scaled)  # Convert to data frame for easy plotting
+cluster_1_hclust_df$Cluster <- factor(clusters_1)  # Add cluster assignments
+
+# Perform Hierarchical Clustering on cluster group 2
+cluster_2_scaled <- scale_numeric(cluster_group_2)
+dist_cluster_2 <- dist(cluster_2_scaled)
+hclust_cluster_2 <- hclust(dist_cluster_2, method = "complete")
+plot(hclust_cluster_2, main = "Hierarchical Clustering - Cluster Group 2", xlab = "", sub = "", cex = 0.8)
+
+clusters_2 <- cutree(hclust_cluster_2, k = 2)
+cluster_2_hclust_df <- as.data.frame(cluster_2_scaled)
+cluster_2_hclust_df$Cluster <- factor(clusters_2)
+
+# Perform Hierarchical Clustering on cluster group 3
+cluster_3_scaled <- scale_numeric(cluster_group_3)
+dist_cluster_3 <- dist(cluster_3_scaled)
+hclust_cluster_3 <- hclust(dist_cluster_3, method = "complete")
+plot(hclust_cluster_3, main = "Hierarchical Clustering - Cluster Group 3", xlab = "", sub = "", cex = 0.8)
+
+clusters_3 <- cutree(hclust_cluster_3, k = 2)
+cluster_3_hclust_df <- as.data.frame(cluster_3_scaled)
+cluster_3_hclust_df$Cluster <- factor(clusters_3)
+
+# Perform Hierarchical Clustering on cluster group 4
+cluster_4_scaled <- scale_numeric(cluster_group_4)
+dist_cluster_4 <- dist(cluster_4_scaled)
+hclust_cluster_4 <- hclust(dist_cluster_4, method = "complete")
+plot(hclust_cluster_4, main = "Hierarchical Clustering - Cluster Group 4", xlab = "", sub = "", cex = 0.8)
+
+clusters_4 <- cutree(hclust_cluster_4, k = 2)
+cluster_4_hclust_df <- as.data.frame(cluster_4_scaled)
+cluster_4_hclust_df$Cluster <- factor(clusters_4)
+
+# View the hierarchical clustering results
+list(
+  cluster_1_hclust_df = cluster_1_hclust_df,
+  cluster_2_hclust_df = cluster_2_hclust_df,
+  cluster_3_hclust_df = cluster_3_hclust_df,
+  cluster_4_hclust_df = cluster_4_hclust_df
+)
 
 
-km_cluster_1 <- kmeans(cluster_1, centers = 3, nstart = 10)
-km_cluster_1
 
-ggplot(cluster_group_1, aes(x = age_under_21, y = age_22_to_64, color = factor(km_cluster_1$cluster))) +
-  geom_point() +
-  geom_text_repel(aes(label = county), size = 2) +
-  labs(title = "K-Means Clustering of Age Groups", x = "Age Under 21", y = "Age 22 to 64") +
-  theme_minimal()
+
+
+
 
 
 
