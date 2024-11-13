@@ -136,8 +136,11 @@ states <- map_data("state")
 tx_df <- subset(states, region == "texas")
 
 counties <- map_data("county")
-tx_county_df <- subset(counties, region == "texas")
-
+tx_county_df <- subset(counties, region == "texas") %>%
+  mutate(
+    subregion = str_replace_all(subregion, "de witt", "dewitt")
+  )
+ 
 # Ensure county names match between map data and your cleaned data
 # Extract just the county name from the "subregion" column in the map data
 tx_county_df$county <- tolower(tx_county_df$subregion)  # Standardize names
@@ -177,6 +180,7 @@ death_map <- tx_county_df %>% left_join(death_per_county, by = "county")
 population_density <- census_cleaned %>%
   group_by(county) %>%select(population)
 
+
 population_density_map <- tx_county_df %>%
   left_join(population_density, by = "county") 
 
@@ -214,6 +218,7 @@ scale_numeric <- function(x) {
                      function(y) (y - mean(y, na.rm = TRUE)) / sd(y, na.rm = TRUE)))
 }
 
+
 cluster_group_1 <- census_cleaned %>%
   left_join(population_density_map, by = 'county') %>%
   distinct(county, .keep_all = TRUE) %>%
@@ -226,7 +231,10 @@ cluster_group_2 <- census_cleaned %>%
   select(commute_public_transportation, commute_alone, population_density) |>
   scale_numeric()
 
-cluster_group_3 <- acute_facility_cleaned %>%
+cluster_group_3 <- acute_facility_cleaned %>% 
+  mutate(
+    county = str_replace_all(county, "de witt", "dewitt")
+  ) %>%
   left_join(population_density_map, by = 'county') %>%
   select(ownership, beds, population_density) %>% 
   distinct() |>
@@ -244,3 +252,53 @@ cluster_group_4 <- census_cleaned %>%
 #' Creating clusters using k-means, k-modes, hierarchical clustering
 #'
 #'
+
+pkgs <- c("cluster", "dbscan", "e1071", "factoextra", "fpc", 
+          "GGally", "kernlab", "mclust", "mlbench", "scatterpie", 
+          "seriation", "tidyverse")
+
+pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
+if(length(pkgs_install)) install.packages(pkgs_install)
+
+# K-Mean
+cluster_1 <- do.call(rbind, cluster_group_1)
+sum(is.na(cluster_1))
+sum(is.nan(cluster_1))
+sum(is.infinite(cluster_1))
+which(is.na(cluster_1))
+
+
+cluster_2 <- do.call(rbind, cluster_group_2)
+sum(is.na(cluster_2))
+sum(is.nan(cluster_2))
+sum(is.infinite(cluster_2))
+which(is.na(cluster_2))
+
+
+cluster_3 <- do.call(rbind, cluster_group_3)
+sum(is.na(cluster_3))
+sum(is.nan(cluster_3))
+sum(is.infinite(cluster_3))
+which(is.na(cluster_3))
+summary(cluster_group_3)
+
+cluster_4 <- do.call(rbind, cluster_group_4)
+sum(is.na(cluster_4))
+sum(is.nan(cluster_4))
+sum(is.infinite(cluster_4))
+which(is.na(cluster_4))
+
+
+
+km_cluster_1 <- kmeans(cluster_1, centers = 3, nstart = 10)
+km_cluster_1
+
+ggplot(cluster_group_1, aes(x = age_under_21, y = age_22_to_64, color = factor(km_cluster_1$cluster))) +
+  geom_point() +
+  geom_text_repel(aes(label = county), size = 2) +
+  labs(title = "K-Means Clustering of Age Groups", x = "Age Under 21", y = "Age 22 to 64") +
+  theme_minimal()
+
+
+
+
