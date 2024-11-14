@@ -218,18 +218,69 @@ scale_numeric <- function(x) {
                      function(y) (y - mean(y, na.rm = TRUE)) / sd(y, na.rm = TRUE)))
 }
 
-
+#_______________________________
+# Assuming you've already executed the following to prepare cluster_group_1:
 cluster_group_1 <- census_cleaned %>%
   left_join(population_density_map, by = 'county') %>%
   distinct(county, .keep_all = TRUE) %>%
-  select(age_under_21, age_22_to_64, age_65_and_over, population_density) |>
+  select(age_under_21, age_22_to_64, age_65_and_over, population_density) %>%
   scale_numeric()
 
+# Step 1: Standardize the data (calculate Z-scores)
+z_scores <- scale(cluster_group_1)
+
+# Step 2: Identify outliers (Z-scores greater than 3 or less than -3)
+outliers_z <- abs(z_scores) > 3  # Create a logical matrix for outliers
+
+# Step 3: Find the row indices of the outliers
+outlier_indices <- which(rowSums(outliers_z) > 0)  # Rows where there are any outliers
+
+# Step 4: Select the 4 rows with the highest Z-scores (highest outliers)
+outliers_z_scores <- z_scores[outlier_indices, ]
+outlier_max_z_scores <- apply(outliers_z_scores, 1, function(x) max(abs(x)))  # Max Z-score in each row
+top_4_outliers_idx <- order(outlier_max_z_scores, decreasing = TRUE)[1:4]  # Get the indices of the 4 highest outliers
+
+# Step 5: Extract the 4 outliers
+top_4_outliers <- cluster_group_1[outlier_indices[top_4_outliers_idx], ]
+
+# Step 6: Remove the top 4 outliers from the dataset
+cluster_group_1_no_outliers <- cluster_group_1[-outlier_indices[top_4_outliers_idx], ]
+
+# Display the new dataset without the top 4 outliers
+cluster_group_1 <-cluster_group_1_no_outliers
+
+#______________
+# Assuming you've already executed the following to prepare cluster_group_2:
 cluster_group_2 <- census_cleaned %>%
   left_join(population_density_map, by = 'county') %>%
   distinct(county, .keep_all = TRUE) %>%
-  select(commute_public_transportation, commute_alone, population_density) |>
+  select(commute_public_transportation, commute_alone, population_density) %>%
   scale_numeric()
+
+# Step 1: Standardize the data (calculate Z-scores) for cluster_group_2
+z_scores_2 <- scale(cluster_group_2)
+
+# Step 2: Identify outliers (Z-scores greater than 3 or less than -3)
+outliers_z_2 <- abs(z_scores_2) > 3  # Create a logical matrix for outliers
+
+# Step 3: Find the row indices of the outliers
+outlier_indices_2 <- which(rowSums(outliers_z_2) > 0)  # Rows where there are any outliers
+
+# Step 4: Select the 4 rows with the highest Z-scores (highest outliers)
+outliers_z_scores_2 <- z_scores_2[outlier_indices_2, ]
+outlier_max_z_scores_2 <- apply(outliers_z_scores_2, 1, function(x) max(abs(x)))  # Max Z-score in each row
+top_4_outliers_idx_2 <- order(outlier_max_z_scores_2, decreasing = TRUE)[1:4]  # Get the indices of the 4 highest outliers
+
+# Step 5: Extract the 4 outliers
+top_4_outliers_2 <- cluster_group_2[outlier_indices_2[top_4_outliers_idx_2], ]
+
+# Step 6: Remove the top 4 outliers from the dataset
+cluster_group_2_no_outliers <- cluster_group_2[-outlier_indices_2[top_4_outliers_idx_2], ]
+
+# Display the new dataset without the top 4 outliers
+cluster_group_2 <- cluster_group_2_no_outliers
+
+
 
 cluster_group_3 <- acute_facility_cleaned %>% 
   mutate(
@@ -239,13 +290,39 @@ cluster_group_3 <- acute_facility_cleaned %>%
   select(ownership, beds, population_density) %>% 
   distinct() |>
   scale_numeric()
-  
+
+#_________________________
+# Prepare cluster_group_4 by joining data and selecting relevant columns
 cluster_group_4 <- census_cleaned %>%
   left_join(avg_beds_per_facility, by = 'county') %>%
   left_join(facility_per_county, by = 'county') %>%
   select(age_65_and_over, Avg_Beds_Per_Facility, Facility_Count) %>%
-  mutate_all(~ replace_na(., 0)) |>
-  scale_numeric()
+  scale_numeric() %>%
+  mutate(across(everything(), ~ replace_na(., 0)))  # Replace NA values with 0
+
+# Step 1: Standardize the data (calculate Z-scores) for cluster_group_4
+z_scores_4 <- scale(cluster_group_4)
+
+# Step 2: Identify outliers (Z-scores greater than 3 or less than -3)
+outliers_z_4 <- abs(z_scores_4) > 3  # Create a logical matrix for outliers
+
+# Step 3: Find the row indices of the outliers
+outlier_indices_4 <- which(rowSums(outliers_z_4) > 0)  # Rows where there are any outliers
+
+# Step 4: Select the 4 rows with the highest Z-scores (highest outliers)
+outliers_z_scores_4 <- z_scores_4[outlier_indices_4, ]
+outlier_max_z_scores_4 <- apply(outliers_z_scores_4, 1, function(x) max(abs(x)))  # Max Z-score in each row
+top_4_outliers_idx_4 <- order(outlier_max_z_scores_4, decreasing = TRUE)[1:4]  # Get the indices of the 4 highest outliers
+
+# Step 5: Extract the 4 outliers
+top_4_outliers_4 <- cluster_group_4[outlier_indices_4[top_4_outliers_idx_4], ]
+
+# Step 6: Remove the top 4 outliers from the dataset
+cluster_group_4_no_outliers <- cluster_group_4[-outlier_indices_4[top_4_outliers_idx_4], ]
+
+# Display the new dataset without the top 4 outliers
+cluster_group_4 <- cluster_group_4_no_outliers
+
 
 #'
 #'
@@ -342,18 +419,21 @@ fig4
 #'
 
 # Perform K-means cluster 1
-# Initialize lists to store averaged clustering models and statistics
-avg_wss_values_1 <- numeric(9)  # To store average WSS for each k from 2 to 10
-avg_silhouette_values_1 <- numeric(9)  # To store average silhouette width for each k from 2 to 10
+#
+# Initialize lists to store averaged clustering models and statistics for cluster group 1
+avg_wss_values_1 <- numeric(14)  # To store average WSS for each k from 2 to 15
+avg_silhouette_values_1 <- numeric(14)  # To store average silhouette width for each k from 2 to 15
+avg_dunn_values_1 <- numeric(14)  # To store average Dunn Index for each k from 2 to 15
 
-# Loop through cluster counts from 2 to 10
-for (k in 2:10) {
-  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+# Loop through cluster counts from 2 to 15 for cluster group 1
+for (k in 2:15) {
+  # Initialize vectors to store WSS, silhouette, and Dunn Index values for each of the 10 runs
   wss_runs <- numeric(10)
   silhouette_runs <- numeric(10)
+  dunn_runs <- numeric(10)  # Store Dunn Index for each run
   
   for (i in 1:10) {
-    # Run k-means clustering with k clusters
+    # Run k-means clustering with k clusters for cluster group 1
     km_model <- kmeans(cluster_group_1, centers = k, nstart = 10)
     
     # Calculate the distance matrix
@@ -362,38 +442,49 @@ for (k in 2:10) {
     # Calculate clustering statistics using fpc package without loading it
     stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
     
-    # Store the WSS and silhouette width for this run
+    # Store the WSS, silhouette width, and Dunn Index for this run
     wss_runs[i] <- km_model$tot.withinss
     silhouette_runs[i] <- stats$avg.silwidth
+    dunn_runs[i] <- stats$dunn
   }
   
-  # Calculate and store the average WSS and silhouette width for this k
+  # Calculate and store the average WSS, silhouette width, and Dunn Index for this k
   avg_wss_values_1[k - 1] <- mean(wss_runs)
   avg_silhouette_values_1[k - 1] <- mean(silhouette_runs)
+  avg_dunn_values_1[k - 1] <- mean(dunn_runs)
 }
 
-# Plot the average WSS to find the elbow point
-plot(2:10, avg_wss_values_1, type = "b", pch = 19, frame = FALSE,
+# Plot the average WSS to find the elbow point for cluster group 1
+plot(2:15, avg_wss_values_1, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters (k) Group 1", ylab = "Average Total WSS",
      main = "WSS for Optimal k (Averaged over 10 runs)")
 
-# Plot the average silhouette width to find the optimal k
-plot(2:10, avg_silhouette_values_1, type = "b", pch = 19, frame = FALSE,
+# Plot the average silhouette width to find the optimal k for cluster group 1
+plot(2:15, avg_silhouette_values_1, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters (k) Group 1", ylab = "Average Silhouette Width",
      main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
+
+# Plot the average Dunn Index to assess cluster separation for optimal k for cluster group 1
+plot(2:15, avg_dunn_values_1, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 1", ylab = "Average Dunn Index",
+     main = "Dunn Index for Optimal k (Averaged over 10 runs)")
+
 
 #
 # Perform K-means cluster 2
 #
+#
 # Initialize lists to store averaged clustering models and statistics for cluster group 2
-avg_wss_values_2 <- numeric(9)  # To store average WSS for each k from 2 to 10
-avg_silhouette_values_2 <- numeric(9)  # To store average silhouette width for each k from 2 to 10
+avg_wss_values_2 <- numeric(14)  # To store average WSS for each k from 2 to 15
+avg_silhouette_values_2 <- numeric(14)  # To store average silhouette width for each k from 2 to 15
+avg_dunn_values_2 <- numeric(14)  # To store average Dunn Index for each k from 2 to 15
 
-# Loop through cluster counts from 2 to 10 for cluster group 2
-for (k in 2:10) {
-  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+# Loop through cluster counts from 2 to 15 for cluster group 2
+for (k in 2:15) {
+  # Initialize vectors to store WSS, silhouette, and Dunn Index values for each of the 10 runs
   wss_runs <- numeric(10)
   silhouette_runs <- numeric(10)
+  dunn_runs <- numeric(10)  # Store Dunn Index for each run
   
   for (i in 1:10) {
     # Run k-means clustering with k clusters for cluster group 2
@@ -405,25 +496,33 @@ for (k in 2:10) {
     # Calculate clustering statistics using fpc package without loading it
     stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
     
-    # Store the WSS and silhouette width for this run
+    # Store the WSS, silhouette width, and Dunn Index for this run
     wss_runs[i] <- km_model$tot.withinss
     silhouette_runs[i] <- stats$avg.silwidth
+    dunn_runs[i] <- stats$dunn
   }
   
-  # Calculate and store the average WSS and silhouette width for this k
+  # Calculate and store the average WSS, silhouette width, and Dunn Index for this k
   avg_wss_values_2[k - 1] <- mean(wss_runs)
   avg_silhouette_values_2[k - 1] <- mean(silhouette_runs)
+  avg_dunn_values_2[k - 1] <- mean(dunn_runs)
 }
 
 # Plot the average WSS to find the elbow point for cluster group 2
-plot(2:10, avg_wss_values_2, type = "b", pch = 19, frame = FALSE,
+plot(2:15, avg_wss_values_2, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters (k) Group 2", ylab = "Average Total WSS",
      main = "WSS for Optimal k (Averaged over 10 runs)")
 
 # Plot the average silhouette width to find the optimal k for cluster group 2
-plot(2:10, avg_silhouette_values_2, type = "b", pch = 19, frame = FALSE,
+plot(2:15, avg_silhouette_values_2, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters (k) Group 2", ylab = "Average Silhouette Width",
-     main = "Silhouette Method for Optimal k ( Averaged over 10 runs)")
+     main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
+
+# Plot the average Dunn Index to assess cluster separation for optimal k for cluster group 2
+plot(2:15, avg_dunn_values_2, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 2", ylab = "Average Dunn Index",
+     main = "Dunn Index for Optimal k (Averaged over 10 runs)")
+
 
 
 # Perform K-means cluster 3
@@ -434,20 +533,17 @@ plot(2:10, avg_silhouette_values_2, type = "b", pch = 19, frame = FALSE,
 # Perform K-means cluster 4
 #
 #
-# Perform K-means cluster 4
-#
-#
-# Perform K-means cluster 4
-#
 # Initialize lists to store averaged clustering models and statistics for cluster group 4
 avg_wss_values_4 <- numeric(14)  # To store average WSS for each k from 2 to 15
 avg_silhouette_values_4 <- numeric(14)  # To store average silhouette width for each k from 2 to 15
+avg_dunn_values_4 <- numeric(14)  # To store average Dunn Index for each k from 2 to 15
 
 # Loop through cluster counts from 2 to 15 for cluster group 4
 for (k in 2:15) {
-  # Initialize vectors to store WSS and silhouette values for each of the 10 runs
+  # Initialize vectors to store WSS, silhouette, and Dunn Index values for each of the 10 runs
   wss_runs <- numeric(10)
   silhouette_runs <- numeric(10)
+  dunn_runs <- numeric(10)  # Store Dunn Index for each run
   
   for (i in 1:10) {
     # Run k-means clustering with k clusters for cluster group 4
@@ -459,14 +555,16 @@ for (k in 2:15) {
     # Calculate clustering statistics using fpc package without loading it
     stats <- fpc::cluster.stats(d, as.integer(km_model$cluster))
     
-    # Store the WSS and silhouette width for this run
+    # Store the WSS, silhouette width, and Dunn Index for this run
     wss_runs[i] <- km_model$tot.withinss
     silhouette_runs[i] <- stats$avg.silwidth
+    dunn_runs[i] <- stats$dunn
   }
   
-  # Calculate and store the average WSS and silhouette width for this k
+  # Calculate and store the average WSS, silhouette width, and Dunn Index for this k
   avg_wss_values_4[k - 1] <- mean(wss_runs)
   avg_silhouette_values_4[k - 1] <- mean(silhouette_runs)
+  avg_dunn_values_4[k - 1] <- mean(dunn_runs)
 }
 
 # Plot the average WSS to find the elbow point for cluster group 4
@@ -479,6 +577,67 @@ plot(2:15, avg_silhouette_values_4, type = "b", pch = 19, frame = FALSE,
      xlab = "Number of Clusters (k) Group 4", ylab = "Average Silhouette Width",
      main = "Silhouette Method for Optimal k (Averaged over 10 runs)")
 
+# Plot the average Dunn Index to assess cluster separation for optimal k for cluster group 4
+plot(2:15, avg_dunn_values_4, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 4", ylab = "Average Dunn Index",
+     main = "Dunn Index for Optimal k (Averaged over 10 runs)")
+
+# Plotting the optimized K-mean for 1, 2, and 4
+
+km_model_1 <- kmeans(cluster_group_1, centers = 4, nstart = 10)
+
+d <- dist(cluster_group_1)
+# Calculate clustering statistics using fpc package without loading it
+stats <- fpc::cluster.stats(d, as.integer(km_model_1$cluster))
+
+# Convert the cluster centers to a tibble and reshape for plotting
+cluster_centers <- as_tibble(km_model_1$centers, rownames = "cluster") %>%
+  pivot_longer(cols = colnames(km_model_1$centers), names_to = "feature", values_to = "z_score")
+
+# Plot the cluster profiles
+ggplot(cluster_centers, aes(y = feature, x = z_score, fill = cluster)) +
+  geom_bar(stat = "identity") +
+  facet_grid(cols = vars(cluster)) +
+  labs(y = "Feature", x = "Z-scores", title = "Cluster Profiles for km_model_1") + 
+  guides(fill = "none")
+
+# Apply k-means clustering to cluster_group_2 
+km_model_2 <- kmeans(cluster_group_2, centers = 4, nstart = 10)
+
+d2 <- dist(cluster_group_2)
+# Calculate clustering statistics using fpc package without loading it
+stats2 <- fpc::cluster.stats(d, as.integer(km_model_2$cluster))
+
+# Convert cluster centers for km_model_2 to tibble and reshape for plotting
+cluster_centers_2 <- as_tibble(km_model_2$centers, rownames = "cluster") %>%
+  pivot_longer(cols = colnames(km_model_2$centers), names_to = "feature", values_to = "z_score")
+
+# Plot for km_model_2
+ggplot(cluster_centers_2, aes(y = feature, x = z_score, fill = cluster)) +
+  geom_bar(stat = "identity") +
+  facet_grid(cols = vars(cluster)) +
+  labs(y = "Feature", x = "Z-scores", title = "Cluster Profiles for km_model_2") + 
+  guides(fill = "none")
+
+# Apply k-means clustering to cluster_group_4
+km_model_4 <- kmeans(cluster_group_4, centers = 4, nstart = 10)
+d4 <- dist(cluster_group_4)  # Compute distance matrix for cluster_group_4
+
+# Calculate clustering statistics for km_model_4 using fpc package
+stats4 <- fpc::cluster.stats(d4, as.integer(km_model_4$cluster))
+
+# Convert cluster centers for km_model_4 to tibble and reshape for plotting
+cluster_centers_4 <- as_tibble(km_model_4$centers, rownames = "cluster") %>%
+  pivot_longer(cols = colnames(km_model_4$centers), names_to = "feature", values_to = "z_score")
+
+# Plot for km_model_4
+ggplot(cluster_centers_4, aes(y = feature, x = z_score, fill = cluster)) +
+  geom_bar(stat = "identity") +
+  facet_grid(cols = vars(cluster)) +
+  labs(y = "Feature", x = "Z-scores", title = "Cluster Profiles for km_model_4") + 
+  guides(fill = "none")
+
+
 
 #'
 #'
@@ -486,59 +645,40 @@ plot(2:15, avg_silhouette_values_4, type = "b", pch = 19, frame = FALSE,
 #'
 #'
 #'
-# Install and load necessary packages
-if (!require(klaR)) install.packages("klaR")
-library(klaR)
+# Load necessary libraries
 
-# Perform K-mode clustering on cluster group 1
-# Ensure that categorical variables are factored appropriately
-cluster_1_mode <- cluster_group_1 %>%
-  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+# Ensure 'ownership' column is a factor (categorical data)
+cluster_group_3_categorical <- cluster_group_3
+cluster_group_3_categorical$ownership <- as.factor(cluster_group_3_categorical$ownership)
 
-# Now apply k-mode clustering (centers = number of clusters)
-km_mode_1 <- kmodes(cluster_1_mode, modes = 3)
+# Initialize lists to store clustering models and Dunn Index values
+avg_dunn_index_values_3 <- numeric(14)  # To store average Dunn index for each k from 2 to 15
 
-# Add cluster assignments to the data
-cluster_1_mode_df <- as.data.frame(cluster_1_mode)  # Convert to data frame for easy plotting
-cluster_1_mode_df$Cluster <- factor(km_mode_1$cluster)  # Add cluster assignments as a factor
+# Loop through cluster counts from 2 to 15 for cluster group 3
+for (k in 2:15) {
+  # Initialize vector to store Dunn index values for each of the 10 runs
+  dunn_index_runs <- numeric(10)
+  
+  for (i in 1:10) {
+    # Run K-modes clustering with k clusters
+    km_model <- kmodes(cluster_group_3_categorical[, "ownership", drop = FALSE], modes = k, iter.max = 10)
+    
+    # Calculate the Dunn index directly from the cluster assignments
+    dist_matrix <- dist(cluster_group_3_categorical[, "ownership", drop = FALSE])  # Calculate pairwise distance matrix
+    dunn_index_runs[i] <- cluster.stats(dist_matrix, as.integer(km_model$cluster))$dunn
+  }
+  
+  # Calculate and store the average Dunn index for this k
+  avg_dunn_index_values_3[k - 1] <- mean(dunn_index_runs)
+}
 
-# Perform K-mode clustering on cluster group 2
-cluster_2_mode <- cluster_group_2 %>%
-  mutate(across(where(is.factor), as.character))  # Convert factors to characters
+# Plot the average Dunn index to find the optimal k for cluster group 3
+plot(2:15, avg_dunn_index_values_3, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k) Group 3", ylab = "Average Dunn Index",
+     main = "Dunn Index for Optimal k (Averaged over 10 runs for K-modes)")
 
-km_mode_2 <- kmodes(cluster_2_mode, modes = 2)
 
-# Add cluster assignments to the data
-cluster_2_mode_df <- as.data.frame(cluster_2_mode)
-cluster_2_mode_df$Cluster <- factor(km_mode_2$cluster)
 
-# Perform K-mode clustering on cluster group 3
-cluster_3_mode <- cluster_group_3 %>%
-  mutate(across(where(is.factor), as.character))  # Convert factors to characters
-
-km_mode_3 <- kmodes(cluster_3_mode, modes = 2)
-
-# Add cluster assignments to the data
-cluster_3_mode_df <- as.data.frame(cluster_3_mode)
-cluster_3_mode_df$Cluster <- factor(km_mode_3$cluster)
-
-# Perform K-mode clustering on cluster group 4
-cluster_4_mode <- cluster_group_4 %>%
-  mutate(across(where(is.factor), as.character))  # Convert factors to characters
-
-km_mode_4 <- kmodes(cluster_4_mode, modes = 2)
-
-# Add cluster assignments to the data
-cluster_4_mode_df <- as.data.frame(cluster_4_mode)
-cluster_4_mode_df$Cluster <- factor(km_mode_4$cluster)
-
-# View the k-mode clustering results
-list(
-  cluster_1_mode_df = cluster_1_mode_df,
-  cluster_2_mode_df = cluster_2_mode_df,
-  cluster_3_mode_df = cluster_3_mode_df,
-  cluster_4_mode_df = cluster_4_mode_df
-)
 
 #'
 #'
