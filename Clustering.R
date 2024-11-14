@@ -686,7 +686,7 @@ plot(2:15, avg_dunn_index_values_3, type = "b", pch = 19, frame = FALSE,
 #'
 #'
 #'
-install.packages("factoextra")
+install.packages("factoextra")  # Install factoextra package
 library(factoextra)
 
 dist_model_1<- dist(cluster_group_1)
@@ -700,6 +700,35 @@ fviz_dend(hc_model_2)
 dist_model_4<- dist(cluster_group_4)
 hc_model_4 <- hclust(dist_model_4, method = "complete")
 fviz_dend(hc_model_4)
+
+# For cluster_group_1
+clusters_1 <- cutree(hc_model_1, k = 4)  # Extract 4 clusters from the dendrogram
+cluster_complete_1 <- cluster_group_1 %>%
+  add_column(cluster = factor(clusters_1))  # Add the cluster labels
+
+# For cluster_group_2
+clusters_2 <- cutree(hc_model_2, k = 4)  # Extract 4 clusters from the dendrogram
+cluster_complete_2 <- cluster_group_2 %>%
+  add_column(cluster = factor(clusters_2))  # Add the cluster labels
+
+# For cluster_group_4
+clusters_4 <- cutree(hc_model_4, k = 4)  # Extract 4 clusters from the dendrogram
+cluster_complete_4 <- cluster_group_4 %>%
+  add_column(cluster = factor(clusters_4))  # Add the cluster labels
+
+# Visualize dendrogram for cluster_group_1
+fviz_dend(hc_model_1, k = 4, show_labels = FALSE, 
+          main = "Dendrogram for Cluster Group 1")
+
+# Visualize dendrogram for cluster_group_2
+fviz_dend(hc_model_2, k = 4, show_labels = FALSE, 
+          main = "Dendrogram for Cluster Group 2")
+
+# Visualize dendrogram for cluster_group_4
+fviz_dend(hc_model_4, k = 4, show_labels = FALSE, 
+          main = "Dendrogram for Cluster Group 4")
+
+
 
 
 
