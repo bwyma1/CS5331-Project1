@@ -686,67 +686,22 @@ plot(2:15, avg_dunn_index_values_3, type = "b", pch = 19, frame = FALSE,
 #'
 #'
 #'
-# Load necessary library
-if (!require(dendextend)) install.packages("dendextend")
-library(dendextend)
+install.packages("factoextra")
+library(factoextra)
 
-# Hierarchical Clustering on cluster group 1
-# We can use scaled data for this step (as before, scale if necessary)
-cluster_1_scaled <- scale_numeric(cluster_group_1)
+dist_model_1<- dist(cluster_group_1)
+hc_model_1 <- hclust(dist_model_1, method = "complete")
+fviz_dend(hc_model_1 )
 
-# Compute the distance matrix using Euclidean distance
-dist_cluster_1 <- dist(cluster_1_scaled)
+dist_model_2<- dist(cluster_group_2)
+hc_model_2 <- hclust(dist_model_2, method = "complete")
+fviz_dend(hc_model_2)
 
-# Perform hierarchical clustering using complete linkage method
-hclust_cluster_1 <- hclust(dist_cluster_1, method = "complete")
+dist_model_4<- dist(cluster_group_4)
+hc_model_4 <- hclust(dist_model_4, method = "complete")
+fviz_dend(hc_model_4)
 
-# Plot the dendrogram
-plot(hclust_cluster_1, main = "Hierarchical Clustering - Cluster Group 1", xlab = "", sub = "", cex = 0.8)
 
-# Cut the dendrogram to form clusters (e.g., 3 clusters)
-clusters_1 <- cutree(hclust_cluster_1, k = 3)
-
-# Add cluster assignments to the data
-cluster_1_hclust_df <- as.data.frame(cluster_1_scaled)  # Convert to data frame for easy plotting
-cluster_1_hclust_df$Cluster <- factor(clusters_1)  # Add cluster assignments
-
-# Perform Hierarchical Clustering on cluster group 2
-cluster_2_scaled <- scale_numeric(cluster_group_2)
-dist_cluster_2 <- dist(cluster_2_scaled)
-hclust_cluster_2 <- hclust(dist_cluster_2, method = "complete")
-plot(hclust_cluster_2, main = "Hierarchical Clustering - Cluster Group 2", xlab = "", sub = "", cex = 0.8)
-
-clusters_2 <- cutree(hclust_cluster_2, k = 2)
-cluster_2_hclust_df <- as.data.frame(cluster_2_scaled)
-cluster_2_hclust_df$Cluster <- factor(clusters_2)
-
-# Perform Hierarchical Clustering on cluster group 3
-cluster_3_scaled <- scale_numeric(cluster_group_3)
-dist_cluster_3 <- dist(cluster_3_scaled)
-hclust_cluster_3 <- hclust(dist_cluster_3, method = "complete")
-plot(hclust_cluster_3, main = "Hierarchical Clustering - Cluster Group 3", xlab = "", sub = "", cex = 0.8)
-
-clusters_3 <- cutree(hclust_cluster_3, k = 2)
-cluster_3_hclust_df <- as.data.frame(cluster_3_scaled)
-cluster_3_hclust_df$Cluster <- factor(clusters_3)
-
-# Perform Hierarchical Clustering on cluster group 4
-cluster_4_scaled <- scale_numeric(cluster_group_4)
-dist_cluster_4 <- dist(cluster_4_scaled)
-hclust_cluster_4 <- hclust(dist_cluster_4, method = "complete")
-plot(hclust_cluster_4, main = "Hierarchical Clustering - Cluster Group 4", xlab = "", sub = "", cex = 0.8)
-
-clusters_4 <- cutree(hclust_cluster_4, k = 2)
-cluster_4_hclust_df <- as.data.frame(cluster_4_scaled)
-cluster_4_hclust_df$Cluster <- factor(clusters_4)
-
-# View the hierarchical clustering results
-list(
-  cluster_1_hclust_df = cluster_1_hclust_df,
-  cluster_2_hclust_df = cluster_2_hclust_df,
-  cluster_3_hclust_df = cluster_3_hclust_df,
-  cluster_4_hclust_df = cluster_4_hclust_df
-)
 
 
 
