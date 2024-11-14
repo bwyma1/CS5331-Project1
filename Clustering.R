@@ -332,7 +332,7 @@ cluster_group_4 <- cluster_group_4_no_outliers
 
 pkgs <- c("cluster", "dbscan", "e1071", "factoextra", "fpc", 
           "GGally", "kernlab", "mclust", "mlbench", "scatterpie", 
-          "seriation", "tidyverse", "plotly")
+          "seriation", "tidyverse", "plotly", "klaR")
 
 pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
 if(length(pkgs_install)) install.packages(pkgs_install)
@@ -646,38 +646,80 @@ ggplot(cluster_centers_4, aes(y = feature, x = z_score, fill = cluster)) +
 #'
 #'
 # Load necessary libraries
+library(klaR)  # For kmodes() function
 
-# Ensure 'ownership' column is a factor (categorical data)
-cluster_group_3_categorical <- cluster_group_3
-cluster_group_3_categorical$ownership <- as.factor(cluster_group_3_categorical$ownership)
+# Convert factors to characters for K-modes compatibility
+cluster_3_mode <- cluster_group_3 %>%
+  mutate(across(where(is.factor), as.character))
 
-# Initialize lists to store clustering models and Dunn Index values
-avg_dunn_index_values_3 <- numeric(14)  # To store average Dunn index for each k from 2 to 15
+# Initialize a list to store K-modes models and within-cluster variance
+kmodes_results <- list()
+within_cluster_variance <- numeric(14)  # For storing variance for k = 2 to 15
+avg_silhouette_scores <- numeric(14)
+dunn_indices <- numeric(14)
 
-# Loop through cluster counts from 2 to 15 for cluster group 3
+# Loop through different numbers of modes (2 to 15)
 for (k in 2:15) {
-  # Initialize vector to store Dunn index values for each of the 10 runs
-  dunn_index_runs <- numeric(10)
+  # Initialize vector to store within-cluster variances for each run
+  within_cluster_variance_runs <- numeric(10)  # 10 runs for each k
   
+  # Repeat the clustering process 10 times for each value of k
   for (i in 1:10) {
-    # Run K-modes clustering with k clusters
-    km_model <- kmodes(cluster_group_3_categorical[, "ownership", drop = FALSE], modes = k, iter.max = 10)
+    # Run K-modes clustering for each k
+    km_model <- kmodes(cluster_3_mode, modes = k, iter.max = 10)
     
-    # Calculate the Dunn index directly from the cluster assignments
-    dist_matrix <- dist(cluster_group_3_categorical[, "ownership", drop = FALSE])  # Calculate pairwise distance matrix
-    dunn_index_runs[i] <- cluster.stats(dist_matrix, as.integer(km_model$cluster))$dunn
+    # Store the within-cluster variance for this run
+    within_cluster_variance_runs[i] <- km_model$withindiff
   }
   
-  # Calculate and store the average Dunn index for this k
-  avg_dunn_index_values_3[k - 1] <- mean(dunn_index_runs)
+  # Calculate the average within-cluster variance for this k
+  within_cluster_variance[k - 1] <- mean(within_cluster_variance_runs)
 }
 
-# Plot the average Dunn index to find the optimal k for cluster group 3
-plot(2:15, avg_dunn_index_values_3, type = "b", pch = 19, frame = FALSE,
-     xlab = "Number of Clusters (k) Group 3", ylab = "Average Dunn Index",
-     main = "Dunn Index for Optimal k (Averaged over 10 runs for K-modes)")
+# Find the optimal number of modes based on minimum average within-cluster variance
+optimal_k <- which.min(within_cluster_variance) + 1  # Adjusting for index
 
+# Print optimal k and the average variance results
+print("Average within-cluster variance for each k:")
+print(within_cluster_variance)
 
+# Plot the average within-cluster variance
+k_values <- 2:15
+plot_df <- data.frame(K = k_values, Variance = within_cluster_variance)
+
+plot(2:15, within_cluster_variance, type = "b", pch = 19, frame = FALSE,
+     xlab = "Number of Clusters (k)",
+     ylab = "Average Within-cluster Variance",
+     main = "Average Within-cluster Variance for Different K (Modes)")
+
+# Apply k-mode clustering to cluster_group_3
+km_model_3 <- kmodes(cluster_3_mode, modes = 6)
+
+# Convert the cluster_group_3 to a data frame and add cluster results
+cluster_3_mode_df <- as.data.frame(cluster_3_mode)
+cluster_3_mode_df$Cluster <- factor(km_model_3$cluster)
+
+# Create the 2D scatter plot
+ggplot(cluster_3_mode_df, aes(x = beds, y = population_density, color = Cluster, shape = ownership)) +
+  geom_point(size = 3) +  # Add points
+  scale_shape_manual(values = 1:6) +  # Assign different shapes for clusters
+  labs(title = "Cluster Plot: Beds vs Population Density",
+       x = "Beds",
+       y = "Population Density",
+       color = "Cluster",
+       shape = "Ownership") +
+  theme_minimal()  # Clean theme for the plot
+
+# Create the 2D scatter plot
+ggplot(cluster_3_mode_df, aes(x = population_density, y = beds, color = Cluster, shape = ownership)) +
+  geom_point(size = 3) +  # Add points
+  scale_shape_manual(values = 1:6) +  # Assign different shapes for clusters
+  labs(title = "Cluster Plot: Beds vs Population Density",
+       x = "Population Density",
+       y = "Beds",
+       color = "Cluster",
+       shape = "Ownership") +
+  theme_minimal()  # Clean theme for the plot
 
 
 #'
@@ -728,7 +770,28 @@ fviz_dend(hc_model_2, k = 4, show_labels = FALSE,
 fviz_dend(hc_model_4, k = 4, show_labels = FALSE, 
           main = "Dendrogram for Cluster Group 4")
 
+#'
+#'
+#' supervised cluster
+#'
+#'
+#'
+outlier_cases_1000 <- census_cleaned %>%
+  filter(!county %in% c("harris", "dallas", "tarrant", "bexar"))
+# Calculate the mean of the 'case_per_1000' feature
+mean_case_per_1000 <- mean(outlier_cases_1000$cases_per_1000, na.rm = TRUE)
+print(mean_case_per_1000)
 
+mean_death_per_1000 <- mean(outlier_cases_1000$deaths_per_1000, na.rm = TRUE)
+print(mean_death_per_1000)
+
+# Compare 'case_per_1000' to the mean and create the new column
+comparison_df <- outlier_cases_1000 %>%
+  mutate(comparison = if_else(case_per_1000 >= mean_case_per_1000, 1, 0)) %>%
+  select(county, comparison)
+
+# Display the new dataframe
+print(comparison_df)
 
 
 
