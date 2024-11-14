@@ -1,3 +1,5 @@
+
+```{r}
 # 'Libraries to be used in the document
 library("tidyverse")
 library("ggplot2")
@@ -198,20 +200,20 @@ population_density_map <- population_density_map %>%
 
 population_density_map <- population_density_map %>%
   mutate(population_density = population / area)
+```
 
 
-#'
-#'
-#' Clustering Analysis
-#' 
-#'
 
-#'
-#'
-#' Creating Clustering Groups
-#'
-#'
+Clustering Analysis
 
+
+
+
+Creating Clustering Groups
+
+
+
+```{r}
 ## Scale function between (-3,3) mostly
 scale_numeric <- function(x) {
   x |> mutate(across(where(is.numeric), 
@@ -322,14 +324,15 @@ cluster_group_4_no_outliers <- cluster_group_4[-outlier_indices_4[top_4_outliers
 
 # Display the new dataset without the top 4 outliers
 cluster_group_4 <- cluster_group_4_no_outliers
+```
 
 
-#'
-#'
-#' Creating clusters using k-means, k-modes, hierarchical clustering
-#'
-#'
 
+Creating clusters using k-means, k-modes, hierarchical clustering
+
+
+
+```{r}
 pkgs <- c("cluster", "dbscan", "e1071", "factoextra", "fpc", 
           "GGally", "kernlab", "mclust", "mlbench", "scatterpie", 
           "seriation", "tidyverse", "plotly", "klaR")
@@ -409,15 +412,16 @@ fig4 <- fig4 %>% layout(scene = list(
 
 # Display the plot
 fig4
+```
 
 
-#'
-#'
-#' k-means
-#'
-#'
-#'
 
+k-means
+
+
+
+
+```{r}
 # Perform K-means cluster 1
 #
 # Initialize lists to store averaged clustering models and statistics for cluster group 1
@@ -636,15 +640,16 @@ ggplot(cluster_centers_4, aes(y = feature, x = z_score, fill = cluster)) +
   facet_grid(cols = vars(cluster)) +
   labs(y = "Feature", x = "Z-scores", title = "Cluster Profiles for km_model_4") + 
   guides(fill = "none")
+```
 
 
 
-#'
-#'
-#' k-mode
-#'
-#'
-#'
+k-mode
+
+
+
+
+```{r}
 # Load necessary libraries
 library(klaR)  # For kmodes() function
 
@@ -720,14 +725,16 @@ ggplot(cluster_3_mode_df, aes(x = population_density, y = beds, color = Cluster,
        color = "Cluster",
        shape = "Ownership") +
   theme_minimal()  # Clean theme for the plot
+```
 
 
-#'
-#'
-#' hierarchical clustering
-#'
-#'
-#'
+
+hierarchical clustering
+
+
+
+
+```{r}
 install.packages("factoextra")  # Install factoextra package
 library(factoextra)
 
@@ -769,14 +776,16 @@ fviz_dend(hc_model_2, k = 4, show_labels = FALSE,
 # Visualize dendrogram for cluster_group_4
 fviz_dend(hc_model_4, k = 4, show_labels = FALSE, 
           main = "Dendrogram for Cluster Group 4")
+```
 
-#'
-#'
-#' supervised cluster
-#'
-#'
-#'
 
+
+supervised cluster
+
+
+
+
+```{r}
 outlier_cases_1000 <- census_cleaned %>%
   filter(!county %in% c("harris", "dallas", "tarrant", "bexar"))
 # Calculate the mean of the 'case_per_1000' feature
@@ -868,8 +877,13 @@ purity_2 <- sum(max_counts_2) / nrow(joined_df_2)
 
 # Print the purity score for cluster_group_2
 print(paste("Purity for cluster_group_2:", round(purity_2, 4)))
+```
 
 
 
+---
+title: Clustering.R
+author: davidjiang
+date: '2024-11-13'
 
-
+---
