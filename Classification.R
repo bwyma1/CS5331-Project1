@@ -160,3 +160,20 @@ summary(cases_sel)
 #' Splitting into training and testing data sets
 #'
 #'
+pkgs <- c("basemodels", "C50", "caret", "e1071", "klaR", 
+          "lattice", "MASS", "mlbench", "nnet", "palmerpenguins", 
+          "randomForest", "rpart", "RWeka", "scales", "tidyverse", 
+          "xgboost")
+
+pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
+if(length(pkgs_install)) install.packages(pkgs_install)
+
+library(caret)
+
+cases_class <- as_tibble(cases_sel)
+
+inTrain <- createDataPartition(y = cases_class$bad_cases, p = 0.8, list = FALSE)
+training <- cases_class[inTrain, ]
+testing <- cases_class[-inTrain, ]
+
+
