@@ -1,4 +1,11 @@
 # 'Libraries to be used in the document
+pkgs <- c("basemodels", "C50", "caret", "e1071", "klaR", 
+          "lattice", "MASS", "mlbench", "nnet", "palmerpenguins", 
+          "randomForest", "rpart", "RWeka", "scales", "tidyverse", 
+          "xgboost", "rpart.plot", "sampling", "smotefamily")
+
+pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
+if(length(pkgs_install)) install.packages(pkgs_install)
 library("tidyverse")
 library("ggplot2")
 library("ggrepel")
@@ -6,6 +13,10 @@ library("ggcorrplot")
 library("DT")
 library(stringr)
 library(dplyr)
+library(caret)
+library(smotefamily)
+
+set.seed(6)
 
 cases_tx <- read_csv("COVID-19/COVID-19_cases_TX.csv")
 
@@ -147,7 +158,7 @@ cases_sel <- cases_sel %>%
 
 cases_sel <- full_join(cases_sel, hospital_data, by = "county_name") %>%
   mutate(across(where(is.numeric), ~ replace_na(., 0)),
-         hospital_beds = hospital_beds / total_pop *10000) 
+         hospital_beds = hospital_beds / total_pop*10000) 
 
 cases_sel <- cases_sel %>%
   filter(total_pop != 0)
@@ -162,156 +173,86 @@ summary(cases_sel)
 #' Splitting into training and testing data sets
 #'
 #'
-pkgs <- c("basemodels", "C50", "caret", "e1071", "klaR", 
-          "lattice", "MASS", "mlbench", "nnet", "palmerpenguins", 
-          "randomForest", "rpart", "RWeka", "scales", "tidyverse", 
-          "xgboost", "rpart.plot", "sampling")
 
-pkgs_install <- pkgs[!(pkgs %in% installed.packages()[,"Package"])]
-if(length(pkgs_install)) install.packages(pkgs_install)
 
-library(caret)
-
-cases_sel_without_deaths <- cases_sel %>%
+cases_sel <- cases_sel %>%
+  select(-county_name)
+  
+inTrain <- createDataPartition(y = cases_sel$bad_cases, p = 0.8, list = FALSE)
+training_cases <- cases_sel[inTrain, ] %>%
+  select(-bad_deaths)
+testing_cases <- cases_sel[-inTrain, ] %>%
   select(-bad_deaths)
 
-inTrain <- createDataPartition(y = cases_sel_without_deaths$bad_cases, p = 0.8, list = FALSE)
-training_cases <- cases_sel_without_deaths[inTrain, ]
-testing_cases <- cases_sel_without_deaths[-inTrain, ]
-
-cases_sel_without_cases <- cases_sel %>%
+training_deaths <- cases_sel[inTrain, ] %>%
+  select(-bad_cases)
+testing_deaths <- cases_sel[-inTrain, ] %>%
   select(-bad_cases)
 
-inTrain <- createDataPartition(y = cases_sel_without_cases$bad_deaths, p = 0.8, list = FALSE)
-training_deaths <- cases_sel_without_cases[inTrain, ]
-testing_deaths <- cases_sel_without_cases[-inTrain, ]
-
-
-# Map TRUE/FALSE in bad_deaths to 1/0
-cases_class <- cases_sel %>%
-  mutate(
-    bad_deaths = ifelse(bad_deaths == TRUE, 1, 0),
-    bad_cases = ifelse(bad_cases == TRUE, 1, 0)
-  )
-
-
-cases_class_without_deaths <- cases_class %>%
+training_deaths_without_county <- training_deaths %>%
   select(-bad_deaths)
+training_deaths <- SMOTE(training_deaths_without_county, training_deaths$bad_deaths, K=5, dup_size = (sum(training_deaths$bad_deaths == TRUE)/sum(training_deaths$bad_deaths == FALSE)))
+training_deaths <- training_deaths$data %>%
+  rename(bad_deaths = class)
 
-inTrain <- createDataPartition(y = cases_class_without_deaths$bad_cases, p = 0.8, list = FALSE)
-training_cases_ohe <- cases_class_without_deaths[inTrain, ]
-testing_cases_ohe <- cases_class_without_deaths[-inTrain, ]
-
-cases_class_without_cases <- cases_class %>%
-  select(-bad_cases)
-
-inTrain <- createDataPartition(y = cases_class_without_cases$bad_deaths, p = 0.8, list = FALSE)
-training_deaths_ohe <- cases_class_without_cases[inTrain, ]
-testing_deaths_ohe <- cases_class_without_cases[-inTrain, ]
-
-cases_formula_ohe <- as.formula(paste("bad_cases ~ . - county_name"))
-deaths_formula_ohe <- as.formula(paste("bad_deaths ~ . - county_name"))
+cases_formula <- as.formula(paste("bad_cases ~ ."))
+deaths_formula <- as.formula(paste("bad_deaths ~ ."))
 
 #'
 #'
-#' Rule-Based Classifier
-#'
-#'
-
-# Load required libraries
-library(caret)
-library(RWeka) # For PART implementation
-
-# Ensure the target variable is a factor
-training_cases_ohe$bad_cases <- as.factor(training_cases_ohe$bad_cases)
-
-caseFit <- training_cases_ohe |> train(cases_formula_ohe,
-                               method = "PART",
-                               data = _,
-                               tuneLength = 5,
-                               trControl = trainControl(method = "cv"))
-caseFit 
-
-caseFit$finalModel
-
-#  Use the Data As Is and Hope For The Best
-# Ensure the target variable for deaths is a factor
-training_deaths_ohe$bad_deaths <- as.factor(training_deaths_ohe$bad_deaths)
-
-# Train the model for deaths classification
-deathFit <-  train(deaths_formula_ohe, 
-                  method = "PART", 
-                  data = training_deaths_ohe,
-                  tuneLength = 5, 
-                  trControl = trainControl(method = "cv"))
-
-# Check the model results
-deathFit 
-
-
-# Up sampling
-# Train the model for deaths classification
-deathFit_up_samp <- train(deaths_formula_ohe, 
-                  method = "PART", 
-                  data = training_deaths_ohe,
-                  tuneLength = 5, 
-                  trControl = trainControl(method = "cv", sampling  = "up"))
-
-# Check the model results
-deathFit_up_samp
-
-# Resampling 
-
-# Build A Larger Tree and use Predicted Probabilities
-
-
-# Check the model results
-deathFit_pred_tree
-
-
-# Access the final trained model (rules learned by PART)
-deathFit$finalModel
-
-#'
-#'
-#' Decision Tree Classifier
+#' Random Forest Classifier
 #'
 #'
 library(xgboost)
 # Random Forest cases
-randomForestFit_cases <- training_cases_ohe |> train(cases_formula_ohe,
-                                      method = "rf",
-                                      data = _,
-                                      tuneLength = 5,
-                                      trControl = trainControl(method = "cv"))
+randomForestFit_cases <- training_cases |> train(cases_formula,
+                                                 method = "rf",
+                                                 data = _,
+                                                 tuneLength = 5,
+                                                 trControl = trainControl(method = "cv"))
 randomForestFit_cases
 
 # Random Forest deaths
-randomForestFit_deaths <- training_deaths_ohe |> train(deaths_formula_ohe,
-                                                     method = "rf",
-                                                     data = _,
-                                                     tuneLength = 5,
-                                                     trControl = trainControl(method = "cv"))
+randomForestFit_deaths <- training_deaths |> train(deaths_formula,
+                                                   method = "rf",
+                                                   data = _,
+                                                   tuneLength = 5,
+                                                   trControl = trainControl(method = "cv"))
 randomForestFit_deaths
 
-# Gradient Boosted Decision Trees
-xgboostFit_cases  <- training_cases_ohe |> train(cases_formula_ohe,
-                                        method = "xgbTree",
-                                        data = _,
-                                        tuneLength = 5,
-                                        trControl = trainControl(method = "cv"),
-                                        tuneGrid = expand.grid(
-                                          nrounds = 20,
-                                          max_depth = 3,
-                                          colsample_bytree = .6,
-                                          eta = 0.1,
-                                          gamma=0,
-                                          min_child_weight = 1,
-                                          subsample = .5
-                                        ))
-xgboostFit_cases
+# Predicting on random forest
+predictions <- predict(randomForestFit_cases, newdata = testing_cases)
 
-xgboostFit_deaths  <- training_deaths_ohe |> train(deaths_formula_ohe,
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(randomForestFit_deaths, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths)  
+print(conf_matrix)
+
+# Plot variable importance for cases
+varImp_cases <- varImp(randomForestFit_cases, scale = TRUE)
+plot(varImp_cases, top = 10, main = "Variable Importance - Random Forest (Cases)")
+
+# Plot variable importance for deaths
+varImp_deaths <- varImp(randomForestFit_deaths, scale = TRUE)
+plot(varImp_deaths, top = 10, main = "Variable Importance - Random Forest (Deaths)")
+
+# Plot tuning results for Random Forest cases
+plot(randomForestFit_cases, main = "Tuning Results - Random Forest (Cases)")
+
+# Plot tuning results for Random Forest deaths
+plot(randomForestFit_deaths, main = "Tuning Results - Random Forest (Deaths)")
+
+#'
+#'
+#' Gradient Boosted Decision Trees Classifier
+#'
+#'
+
+# Gradient Boosted Decision Trees
+xgboostFit_cases  <- training_cases |> train(cases_formula,
                                                  method = "xgbTree",
                                                  data = _,
                                                  tuneLength = 5,
@@ -325,16 +266,34 @@ xgboostFit_deaths  <- training_deaths_ohe |> train(deaths_formula_ohe,
                                                    min_child_weight = 1,
                                                    subsample = .5
                                                  ))
+xgboostFit_cases
+
+xgboostFit_deaths  <- training_deaths |> train(deaths_formula,
+                                                   method = "xgbTree",
+                                                   data = _,
+                                                   tuneLength = 5,
+                                                   trControl = trainControl(method = "cv"),
+                                                   tuneGrid = expand.grid(
+                                                     nrounds = 20,
+                                                     max_depth = 3,
+                                                     colsample_bytree = .6,
+                                                     eta = 0.1,
+                                                     gamma=0,
+                                                     min_child_weight = 1,
+                                                     subsample = .5
+                                                   ))
 xgboostFit_deaths
 
+# Predicting on xgboost
+predictions <- predict(xgboostFit_cases, newdata = testing_cases)
 
-# Plot variable importance for cases
-varImp_cases <- varImp(randomForestFit_cases, scale = TRUE)
-plot(varImp_cases, top = 10, main = "Variable Importance - Random Forest (Cases)")
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
 
-# Plot variable importance for deaths
-varImp_deaths <- varImp(randomForestFit_deaths, scale = TRUE)
-plot(varImp_deaths, top = 10, main = "Variable Importance - Random Forest (Deaths)")
+predictions <- predict(xgboostFit_deaths, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths)  
+print(conf_matrix)
 
 # XGBoost variable importance for cases
 xgb.importance.matrix_cases <- xgb.importance(model = xgboostFit_cases$finalModel)
@@ -344,18 +303,41 @@ xgb.plot.importance(xgb.importance.matrix_cases, main = "XGBoost Variable Import
 xgb.importance.matrix_deaths <- xgb.importance(model = xgboostFit_deaths$finalModel)
 xgb.plot.importance(xgb.importance.matrix_deaths, main = "XGBoost Variable Importance (Deaths)")
 
-# Plot tuning results for Random Forest cases
-plot(randomForestFit_cases, main = "Tuning Results - Random Forest (Cases)")
 
-# Plot tuning results for Random Forest deaths
-plot(randomForestFit_deaths, main = "Tuning Results - Random Forest (Deaths)")
+#'
+#'
+#' Rule-Based Classifier
+#'
+#'
+library(RWeka) # For PART implementation
+caseRbc <- training_cases |> train(cases_formula,
+                                       method = "PART",
+                                       data = _,
+                                       tuneLength = 5,
+                                       trControl = trainControl(method = "cv"))
+caseRbc 
 
-# Plot tuning results for XGBoost cases
-plot(xgboostFit_cases, main = "Tuning Results - XGBoost (Cases)")
 
-# Plot tuning results for XGBoost deaths
-plot(xgboostFit_deaths, main = "Tuning Results - XGBoost (Deaths)")
+deathRbc <- training_deaths |> train(deaths_formula,
+                                   method = "PART",
+                                   data = _,
+                                   tuneLength = 5,
+                                   trControl = trainControl(method = "cv"))
+deathRbc
 
+caseRbc$finalModel
+deathRbc$finalModel
+
+# Predicting on test data
+predictions <- predict(caseRbc, newdata = testing_cases)
+
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(deathRbc, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths)  
+print(conf_matrix)
 
 #'
 #'
@@ -363,12 +345,109 @@ plot(xgboostFit_deaths, main = "Tuning Results - XGBoost (Deaths)")
 #'
 #'
 
+svmFit1 <- training_cases |> train(cases_formula,
+                                  method = "svmLinear",
+                                  data = _,
+                                  tuneLength = 5,
+                                  trControl = trainControl(method = "cv"))
+svmFit1
+
+svmFit2 <- training_cases |> train(cases_formula,
+                                 method = "svmPoly",
+                                 data = _,
+                                 tuneLength = 5,
+                                 trControl = trainControl(method = "cv"))
+svmFit2
+plot(svmFit2)
+
+svmFit3 <- training_cases |> train(cases_formula,
+                                   method = "svmRadial",
+                                   data = _,
+                                   tuneLength = 5,
+                                   trControl = trainControl(method = "cv"))
+svmFit3
+plot(svmFit3)
+
+svmFit1$finalModel
+svmFit2$finalModel
+svmFit3$finalModel
+
+svmFit1_deaths <- training_deaths |> train(deaths_formula,
+                                   method = "svmLinear",
+                                   data = _,
+                                   tuneLength = 5,
+                                   trControl = trainControl(method = "cv"))
+svmFit1_deaths
+
+svmFit2_deaths <- training_deaths |> train(deaths_formula,
+                                   method = "svmPoly",
+                                   data = _,
+                                   tuneLength = 5,
+                                   trControl = trainControl(method = "cv"))
+svmFit2_deaths
+
+svmFit3_deaths <- training_deaths |> train(deaths_formula,
+                                           method = "svmRadial",
+                                           data = _,
+                                           tuneLength = 5,
+                                           trControl = trainControl(method = "cv"))
+svmFit3_deaths
+
+svmFit1_deaths$finalModel
+svmFit2_deaths$finalModel
+svmFit3_deaths$finalModel
+
+# Predicting on test data
+predictions <- predict(svmFit1, newdata = testing_cases)
+
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(svmFit2, newdata = testing_cases)
+
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(svmFit2_deaths, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths)  
+print(conf_matrix)
 
 #'
 #'
 #' Naive Bayes Classifier
 #'
 #'
+
+NBFit <- train(x = as.data.frame(testing_cases[, -ncol(testing_cases)]), 
+               y = pull(testing_cases, "bad_cases"),
+               method = "nb",
+               tuneGrid = data.frame(fL = c(.2, .5, 1, 5), 
+                                     usekernel = TRUE, adjust = 1),
+               trControl = trainControl(method = "cv"))
+NBFit
+
+NBFit_deaths <- train(x = as.data.frame(testing_deaths[, -ncol(testing_deaths)]), 
+               y = pull(testing_deaths, "bad_deaths"),
+               method = "nb",
+               tuneGrid = data.frame(fL = c(.2, .5, 1, 5), 
+                                     usekernel = TRUE, adjust = 1),
+               trControl = trainControl(method = "cv"))
+NBFit_deaths
+
+NBFit$finalModel$apriori
+NBFit_deaths$finalModel$apriori
+
+# Predicting on test data
+predictions <- predict(NBFit, newdata = testing_cases)
+
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(NBFit_deaths, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths) 
+print(conf_matrix)
 
 
 #'
@@ -377,4 +456,35 @@ plot(xgboostFit_deaths, main = "Tuning Results - XGBoost (Deaths)")
 #'
 #'
 
+ANNFit <- training_cases |> train(cases_formula,
+                                   method = "nnet",
+                                   data = _,
+                                   tuneLength = 5,
+                                   trControl = trainControl(method = "cv"),
+                                   trace = FALSE)
+ANNFit
+plot(ANNFit)
+
+ANNFit_deaths <- training_deaths |> train(deaths_formula,
+                                  method = "nnet",
+                                  data = _,
+                                  tuneLength = 5,
+                                  trControl = trainControl(method = "cv"),
+                                  trace = FALSE)
+ANNFit_deaths
+plot(ANNFit_deaths)
+
+ANNFit$finalModel
+ANNFit_deaths$finalModel
+
+# Predicting on test data
+predictions <- predict(ANNFit, newdata = testing_cases)
+
+conf_matrix <- confusionMatrix(predictions, testing_cases$bad_cases)  
+print(conf_matrix)
+
+predictions <- predict(ANNFit_deaths, newdata = testing_deaths)
+
+conf_matrix <- confusionMatrix(predictions, testing_deaths$bad_deaths) 
+print(conf_matrix)
 
